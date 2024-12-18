@@ -1,0 +1,64 @@
+schema {
+    query: Query,
+    mutation: Mutation
+    subscription: Subscription
+}
+
+type Subscription {
+    onCreateBook: Book  @aws_subscribe(mutations: ["createBook"])
+}
+
+type Query {
+    getBookById(bookId: ID!): Book! @aws_auth(cognito_groups: ["admin", "customer"])
+    listBooks(limit: Int!, nextToken: String): BooksPage! @aws_auth(cognito_groups: ["admin", "customer"])
+    myOrders(limit: Int!, nextToken: String): orderItemsPage! @aws_auth(cognito_groups: ["admin", "customer"])
+    getOrderByUserId(userId: ID!): orderItemsPage! @aws_auth(cognito_groups: ["admin", "customer"])
+} 
+
+type orderItemsPage {
+    orderItems: [OrderItem]
+    nextToken: String
+}
+
+type OrderItem {
+    userId: ID!
+    orderId: ID!
+    book: Book
+    quantity: Int!
+    bookId:ID! 
+}
+
+type BooksPage {
+    books: [Book]
+    nextToken: String
+}
+
+type Book @aws_iam @aws_cognito_user_pools	{
+    bookId: ID! 
+    title: String!
+    description: String
+    imageUrl: AWSURL
+    author: String!
+    price: Float!
+    createdAt: AWSDateTime
+    updatedAt: AWSDateTime
+}
+
+type Mutation {
+    createBook(newBook: BookInput): Book! @aws_auth(cognito_groups: ["admin"])
+    createOrder(newOrder: OrderInput): OrderItem! @aws_auth(cognito_groups: ["admin", "customer"])
+}
+
+input OrderInput {
+    bookId: ID!
+    quantity: Int!
+    userId: ID!
+}
+
+input BookInput {
+    title: String!
+    description: String
+    imageUrl: AWSURL
+    author: String!
+    price: Float!
+}

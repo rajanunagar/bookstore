@@ -1,0 +1,160 @@
+org: rajanunagar
+app: book-store-service
+service: book-store-service
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  lambdaHashingVersion: 20201221
+  stage: dev  
+  region: us-west-1
+  environment:
+    BOOKS_TABLE: !Ref booksTable
+
+plugins:
+  - serverless-appsync-plugin
+  - serverless-iam-roles-per-function
+
+package:
+  individually: true
+  patterns:
+    - '!node_modules/**'
+    - '!mapping-templates/**'
+    - '!schema.graphql'
+    - '!package.json'
+    - '!package-lock.json'
+    - '!Frontend/**'
+    - '!README.md'
+    - "!.gitignore"
+    - '!resources.yml'
+    - '!resolvers/pipelines/**'
+    - '!resolvers/unit/**'
+
+functions:
+  getBookByIdLambda:
+    name: getBookByIdLambda
+    handler: resolvers/lambda/getBookById.handler
+    package:
+      patterns:
+        - '!resolvers/lambda/createBook.js'
+    iamRoleStatements:
+      - Effect: Allow
+        Action: dynamodb:GetItem
+        Resource: !GetAtt booksTable.Arn
+  createBookLambda:
+    name: createBookLambda
+    handler: resolvers/lambda/createBook.handler
+    package:
+      patterns:
+        - '!resolvers/lambda/getBookById.js'
+    iamRoleStatements:
+      - Effect: Allow
+        Action: dynamodb:PutItem
+        Resource: !GetAtt booksTable.Arn
+
+appSync:
+  name: youtubeAppSyncApi
+  authentication: 
+    type: 'AMAZON_COGNITO_USER_POOLS'
+    config: 
+      awsRegion: us-west-1
+      defaultAction: ALLOW
+      userPoolId: !Ref cognitoUserPool
+
+  pipelineFunctions:
+    getBookByIdFnPipeline:
+      dataSource: bookTable_DataSource
+      code: resolvers/pipelines/getBookById.js
+
+  resolvers:
+    getBookById:
+      type: Query
+      field: getBookById
+
+      # unit resolver
+      # kind: UNIT
+      # dataSource: bookTable_DataSource
+      # request: resolvers/unit/getBookById-request.vtl
+      # response: resolvers/unit/getBookById-response.vtl
+
+      # pipeLine resolver
+      # functions: 
+      #   - getBookByIdFnPipeline
+
+      # lamdbda reolver
+      kind: UNIT
+      dataSource: awsLambdGetBookById_Fun
+      request: resolvers/unit/getBookByIdLambda-request.vtl
+      response: resolvers/unit/getBookByIdLambda-response.vtl
+    
+    getOrderByUserId:
+      type: Query
+      field: getOrderByUserId
+      kind: UNIT
+      dataSource: orderTable_DataSource
+      request: resolvers/unit/getOrderByUserId-request.vtl
+      response: resolvers/unit/getOrderByUserId-response.vtl
+      
+    listBooks:
+      type: Query
+      field: listBooks
+      kind: UNIT
+      dataSource: bookTable_DataSource
+      request: resolvers/unit/listBooks-request.vtl
+      response: resolvers/unit/listBooks-response.vtl
+    myOrders:
+      type: Query
+      field: myOrders
+      kind: UNIT
+      dataSource: orderTable_DataSource
+      request: resolvers/unit/myOrders-request.vtl
+      response: resolvers/unit/myOrders-response.vtl
+    createBook:
+      type: Mutation
+      field: createBook
+      # kind: UNIT
+      # dataSource: bookTable_DataSource
+      # request: resolvers/unit/createBook-request.vtl
+      # response: resolvers/unit/createBook-response.vtl
+
+       # lamdbda reolver
+      kind: UNIT
+      dataSource: awsLambdCreateBook_Fun
+      request: resolvers/unit/createBookLambda-request.vtl
+      response: resolvers/unit/createBookLambda-response.vtl
+    createOrder:
+      type: Mutation
+      field: createOrder
+      kind: UNIT
+      dataSource: orderTable_DataSource
+      request: resolvers/unit/createOrder-request.vtl
+      response: resolvers/unit/createOrder-response.vtl
+
+  dataSources:
+    bookTable_DataSource:
+      type: AMAZON_DYNAMODB
+      description: 'Amazon DynamoDB dataSource for books table'
+      config: 
+        tableName: !Ref booksTable
+    orderTable_DataSource:
+      type: AMAZON_DYNAMODB
+      description: 'Amazon DynamoDB dataSource for books table'
+      config: 
+        tableName: !Ref orderTable
+    awsLambdGetBookById_Fun:
+      type: AWS_LAMBDA
+      description: 'Lambda DataSources for getBookById'
+      config:
+        functionName: getBookByIdLambda
+    awsLambdCreateBook_Fun:
+      type: AWS_LAMBDA
+      description: 'Lambda DataSources for Create Book'
+      config:
+        functionName: createBookLambda
+
+
+resources:
+  Resources:
+    ${file(resources.yml)}
+  
