@@ -28,8 +28,7 @@ package:
     - '!README.md'
     - "!.gitignore"
     - '!resources.yml'
-    - '!resolvers/pipelines/**'
-    - '!resolvers/unit/**'
+    - '!resolvers/**'
 
 functions:
   getBookByIdLambda:
@@ -37,7 +36,7 @@ functions:
     handler: resolvers/lambda/getBookById.handler
     package:
       patterns:
-        - '!resolvers/lambda/createBook.js'
+        - 'resolvers/lambda/getBookById.js'
     iamRoleStatements:
       - Effect: Allow
         Action: dynamodb:GetItem
@@ -47,7 +46,8 @@ functions:
     handler: resolvers/lambda/createBook.handler
     package:
       patterns:
-        - '!resolvers/lambda/getBookById.js'
+        - 'resolvers/lambda/createBook.js'
+        - 'node_modules/uuid/**'
     iamRoleStatements:
       - Effect: Allow
         Action: dynamodb:PutItem
